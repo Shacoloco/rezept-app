@@ -1,8 +1,8 @@
 const CACHE_NAME = 'recipe-dashboard-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  '/rezept-app/',
+  '/rezept-app/index.html',
+  '/rezept-app/manifest.json'
 ];
 
 self.addEventListener('install', event => {
