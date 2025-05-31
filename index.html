@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rezept Dashboard</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#3B82F6">
+    
+    <!-- App Icon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233B82F6'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233B82F6'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Styles für App-Look -->
+    <style>
+        /* Verhindere Bounce-Effekt auf iOS */
+        body {
+            position: fixed;
+            overflow: hidden;
+            width: 100%;
+            height: 100vh;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        #root {
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* iOS Safe Areas */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+        
+        /* Kein Text-Selection auf Mobile */
+        * {
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        
+        input, textarea {
+            -webkit-user-select: text;
+        }
+    </style>
+    
+    <!-- Scripts -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        // ⚠️ HIER DEINE FIREBASE CONFIG EINFÜGEN ⚠️
+          const firebaseConfig = {
+    apiKey: "AIzaSyDEbXENwoZIVbSE_mZABl6HeaWBMC2W8-E",
+    authDomain: "rezept-dashboard.firebaseapp.com",
+    databaseURL: "https://rezept-dashboard-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "rezept-dashboard",
+    storageBucket: "rezept-dashboard.firebasestorage.app",
+    messagingSenderId: "616343334164",
+    appId: "1:616343334164:web:904823b1ead4c4dbf86601",
+    measurementId: "G-HDGK305HPP"
+  };
+
+        
+        // Firebase initialisieren
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // React Icons (Lucide) als Komponenten
+        const Plus = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const Calendar = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+        const ShoppingCart = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>;
+        const Clock = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const Users = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
+        const Tag = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>;
+        const Search = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>;
+        const X = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const ChevronLeft = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>;
+        const ChevronRight = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>;
+        const Trash2 = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
+        const Download = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+        const Upload = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
+        const Save = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
+        const Cloud = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>;
+        const CloudOff = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>;
+        const RefreshCw = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>;
+
+        const RecipeDashboard = () => {
+          // Firebase Sync aktiviert
+          const SYNC_ENABLED = true;
+          
+          // Generiere eine eindeutige Benutzer-ID (bleibt gleich pro Browser)
+          const getUserId = () => {
+            let userId = localStorage.getItem('userId');
+            if (!userId) {
+              userId = 'user_' + Math.random().toString(36).substr(2, 9);
+              localStorage.setItem('userId', userId);
+            }
+            return userId;
+          };
+
+          // Initiale Starter-Rezepte
+          const starterRecipes = [
+            {
+              id: 1,
+              name: "Quinoa Buddha Bowl",
+              category: "Mittagessen",
+              prepTime: 25,
+              servings: 2,
+              calories: 380,
+              ingredients: [
+                { item: "Quinoa", amount: 150, unit: "g" },
+                { item: "Kichererbsen", amount: 200, unit: "g" },
+                { item: "Brokkoli", amount: 200, unit: "g" },
+                { item: "Karotten", amount: 2, unit: "Stück" },
+                { item: "Avocado", amount: 1, unit: "Stück" },
+                { item: "Tahini", amount: 2, unit: "EL" },
+                { item: "Zitrone", amount: 1, unit: "Stück" }
+              ],
+              instructions: "Quinoa kochen. Gemüse dämpfen. Kichererbsen anbraten. Tahini-Dressing zubereiten. Alles in einer Schüssel anrichten.",
+              mealPrep: true,
+              tags: ["vegan", "proteinreich", "ballaststoffreich"]
+            },
+            {
+              id: 2,
+              name: "Overnight Oats Beeren",
+              category: "Frühstück",
+              prepTime: 5,
+              servings: 1,
+              calories: 290,
+              ingredients: [
+                { item: "Haferflocken", amount: 50, unit: "g" },
+                { item: "Mandelmilch", amount: 150, unit: "ml" },
+                { item: "Chiasamen", amount: 1, unit: "EL" },
+                { item: "Blaubeeren", amount: 100, unit: "g" },
+                { item: "Honig", amount: 1, unit: "TL" },
+                { item: "Mandeln", amount: 20, unit: "g" }
+              ],
+              instructions: "Alle Zutaten vermischen und über Nacht im Kühlschrank ziehen lassen.",
+              mealPrep: true,
+              tags: ["schnell", "ballaststoffreich", "ohne kochen"]
+            },
+            {
+              id: 3,
+              name: "Lachs mit Ofengemüse",
+              category: "Abendessen",
+              prepTime: 30,
+              servings: 2,
+              calories: 420,
+              ingredients: [
+                { item: "Lachsfilet", amount: 300, unit: "g" },
+                { item: "Süßkartoffel", amount: 300, unit: "g" },
+                { item: "Zucchini", amount: 1, unit: "Stück" },
+                { item: "Paprika", amount: 1, unit: "Stück" },
+                { item: "Olivenöl", amount: 2, unit: "EL" },
+                { item: "Knoblauch", amount: 2, unit: "Zehen" },
+                { item: "Thymian", amount: 1, unit: "TL" }
+              ],
+              instructions: "Gemüse würfeln, mit Öl und Gewürzen mischen. 20 Min bei 200°C backen. Lachs dazugeben, weitere 12 Min backen.",
+              mealPrep: false,
+              tags: ["omega-3", "proteinreich", "low-carb"]
+            },
+            {
+              id: 4,
+              name: "Linsen-Gemüse-Curry",
+              category: "Mittagessen",
+              prepTime: 35,
+              servings: 4,
+              calories: 320,
+              ingredients: [
+                { item: "Rote Linsen", amount: 200, unit: "g" },
+                { item: "Kokosmilch", amount: 400, unit: "ml" },
+                { item: "Tomaten", amount: 3, unit: "Stück" },
+                { item: "Spinat", amount: 200, unit: "g" },
+                { item: "Zwiebel", amount: 1, unit: "Stück" },
+                { item: "Currypulver", amount: 2, unit: "EL" },
+                { item: "Ingwer", amount: 20, unit: "g" }
+              ],
+              instructions: "Zwiebel und Ingwer anbraten. Currypulver zugeben. Linsen, Tomaten und Kokosmilch hinzufügen. 20 Min köcheln. Spinat unterheben.",
+              mealPrep: true,
+              tags: ["vegan", "proteinreich", "meal-prep"]
+            },
+            {
+              id: 5,
+              name: "Griechischer Salat mit Hähnchen",
+              category: "Mittagessen",
+              prepTime: 20,
+              servings: 2,
+              calories: 350,
+              ingredients: [
+                { item: "Hähnchenbrust", amount: 300, unit: "g" },
+                { item: "Gurke", amount: 1, unit: "Stück" },
+                { item: "Tomaten", amount: 3, unit: "Stück" },
+                { item: "Feta", amount: 100, unit: "g" },
+                { item: "Oliven", amount: 50, unit: "g" },
+                { item: "Olivenöl", amount: 3, unit: "EL" },
+                { item: "Oregano", amount: 1, unit: "TL" }
+              ],
+              instructions: "Hähnchen würzen und braten. Gemüse schneiden. Feta würfeln. Alles vermischen. Mit Olivenöl und Oregano abschmecken.",
+              mealPrep: true,
+              tags: ["proteinreich", "mediterran", "low-carb"]
+            }
+          ];
+
+          // State mit localStorage-Integration
+          const [recipes, setRecipes] = React.useState(() => {
+            const saved = localStorage.getItem('recipes');
+            return saved ? JSON.parse(saved) : starterRecipes;
+          });
+
+          const [weekPlan, setWeekPlan] = React.useState(() => {
+            const saved = localStorage.getItem('weekPlan');
+            return saved ? JSON.parse(saved) : {};
+          });
+
+          const [activeView, setActiveView] = React.useState('recipes');
+          const [showAddRecipe, setShowAddRecipe] = React.useState(false);
+          const [searchTerm, setSearchTerm] = React.useState('');
+          const [selectedCategory, setSelectedCategory] = React.useState('all');
+          const [currentWeek, setCurrentWeek] = React.useState(0);
+          const [lastSaved, setLastSaved] = React.useState(null);
+          const [syncStatus, setSyncStatus] = React.useState('offline');
+          const [lastSyncTime, setLastSyncTime] = React.useState(null);
+          const [showSyncCode, setShowSyncCode] = React.useState(false);
+          const [syncCode, setSyncCode] = React.useState('');
+
+          // Firebase Sync-Funktionen
+          const syncToCloud = async (data) => {
+            if (!SYNC_ENABLED) return;
+            
+            setSyncStatus('syncing');
+            try {
+              await database.ref(`users/${getUserId()}`).set({
+                recipes: data.recipes,
+                weekPlan: data.weekPlan,
+                lastUpdated: firebase.database.ServerValue.TIMESTAMP
+              });
+              
+              setSyncStatus('synced');
+              setLastSyncTime(new Date());
+            } catch (error) {
+              setSyncStatus('error');
+              console.error('Sync failed:', error);
+            }
+          };
+
+          const syncFromCloud = async () => {
+            if (!SYNC_ENABLED) return;
+            
+            setSyncStatus('syncing');
+            try {
+              const snapshot = await database.ref(`users/${getUserId()}`).once('value');
+              const data = snapshot.val();
+              
+              if (data) {
+                if (data.recipes) setRecipes(data.recipes);
+                if (data.weekPlan) setWeekPlan(data.weekPlan);
+                setSyncStatus('synced');
+                setLastSyncTime(new Date());
+              }
+            } catch (error) {
+              setSyncStatus('error');
+              console.error('Sync failed:', error);
+            }
+          };
+
+          // Sync-Code für Geräte-Verbindung
+          const generateSyncCode = async () => {
+            const code = Math.random().toString(36).substr(2, 8).toUpperCase();
+            setSyncCode(code);
+            setShowSyncCode(true);
+            
+            // Speichere Code in Firebase
+            await database.ref(`syncCodes/${code}`).set({
+              userId: getUserId(),
+              created: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            // Lösche Code nach 5 Minuten
+            setTimeout(() => {
+              database.ref(`syncCodes/${code}`).remove();
+            }, 300000);
+          };
+
+          const connectWithSyncCode = async (code) => {
+            if (!code) return;
+            
+            try {
+              // Hole User-ID vom Sync-Code
+              const codeSnapshot = await database.ref(`syncCodes/${code}`).once('value');
+              const codeData = codeSnapshot.val();
+              
+              if (codeData && codeData.userId) {
+                // Setze die gleiche User-ID
+                localStorage.setItem('userId', codeData.userId);
+                
+                // Lösche den Code (einmalige Verwendung)
+                await database.ref(`syncCodes/${code}`).remove();
+                
+                // Sync die Daten
+                await syncFromCloud();
+                
+                alert('Gerät erfolgreich verbunden! Daten werden synchronisiert.');
+                setShowSyncCode(false);
+              } else {
+                alert('Ungültiger Code. Bitte überprüfen.');
+              }
+            } catch (error) {
+              alert('Verbindung fehlgeschlagen. Bitte Code überprüfen.');
+            }
+          };
+
+          // Speichere Änderungen in localStorage und sync
+          React.useEffect(() => {
+            localStorage.setItem('recipes', JSON.stringify(recipes));
+            setLastSaved(new Date());
+            
+            // Sync nach Änderungen
+            if (SYNC_ENABLED) {
+              const syncTimeout = setTimeout(() => {
+                syncToCloud({ recipes, weekPlan });
+              }, 2000); // 2 Sekunden Verzögerung
+              
+              return () => clearTimeout(syncTimeout);
+            }
+          }, [recipes]);
+
+          React.useEffect(() => {
+            localStorage.setItem('weekPlan', JSON.stringify(weekPlan));
+            setLastSaved(new Date());
+            
+            // Sync nach Änderungen
+            if (SYNC_ENABLED) {
+              const syncTimeout = setTimeout(() => {
+                syncToCloud({ recipes, weekPlan });
+              }, 2000);
+              
+              return () => clearTimeout(syncTimeout);
+            }
+          }, [weekPlan]);
+
+          // Initial sync beim Laden
+          React.useEffect(() => {
+            if (SYNC_ENABLED) {
+              syncFromCloud();
+            }
+          }, []);
+
+          // Export-Funktion
+          const exportData = () => {
+            const data = {
+              recipes,
+              weekPlan,
+              exportDate: new Date().toISOString(),
+              userId: getUserId()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rezepte-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          };
+
+          // Import-Funktion
+          const importData = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                try {
+                  const data = JSON.parse(e.target.result);
+                  if (data.recipes) setRecipes(data.recipes);
+                  if (data.weekPlan) setWeekPlan(data.weekPlan);
+                  alert('Daten erfolgreich importiert!');
+                } catch (error) {
+                  alert('Fehler beim Importieren der Daten. Bitte überprüfe die Datei.');
+                }
+              };
+              reader.readAsText(file);
+            }
+          };
+
+          // Neue Rezept hinzufügen
+          const [newRecipe, setNewRecipe] = React.useState({
+            name: '',
+            category: 'Mittagessen',
+            prepTime: 30,
+            servings: 2,
+            calories: 0,
+            ingredients: [],
+            instructions: '',
+            mealPrep: false,
+            tags: []
+          });
+
+          const [newIngredient, setNewIngredient] = React.useState({ item: '', amount: '', unit: 'g' });
+          const [newTag, setNewTag] = React.useState('');
+
+          const addIngredient = () => {
+            if (newIngredient.item && newIngredient.amount) {
+              setNewRecipe({
+                ...newRecipe,
+                ingredients: [...newRecipe.ingredients, { ...newIngredient, amount: parseFloat(newIngredient.amount) }]
+              });
+              setNewIngredient({ item: '', amount: '', unit: 'g' });
+            }
+          };
+
+          const removeIngredient = (index) => {
+            setNewRecipe({
+              ...newRecipe,
+              ingredients: newRecipe.ingredients.filter((_, i) => i !== index)
+            });
+          };
+
+          const addTag = () => {
+            if (newTag && !newRecipe.tags.includes(newTag)) {
+              setNewRecipe({
+                ...newRecipe,
+                tags: [...newRecipe.tags, newTag]
+              });
+              setNewTag('');
+            }
+          };
+
+          const removeTag = (tag) => {
+            setNewRecipe({
+              ...newRecipe,
+              tags: newRecipe.tags.filter(t => t !== tag)
+            });
+          };
+
+          const deleteRecipe = (recipeId) => {
+            if (window.confirm('Möchtest du dieses Rezept wirklich löschen?')) {
+              setRecipes(recipes.filter(r => r.id !== recipeId));
+              // Entferne auch aus Wochenplan
+              const newWeekPlan = { ...weekPlan };
+              Object.keys(newWeekPlan).forEach(key => {
+                if (newWeekPlan[key]?.id === recipeId) {
+                  delete newWeekPlan[key];
+                }
+              });
+              setWeekPlan(newWeekPlan);
+            }
+          };
+
+          const saveRecipe = () => {
+            if (newRecipe.name && newRecipe.ingredients.length > 0) {
+              const recipe = {
+                ...newRecipe,
+                id: Date.now(),
+                calories: parseInt(newRecipe.calories) || 0
+              };
+              setRecipes([...recipes, recipe]);
+              setNewRecipe({
+                name: '',
+                category: 'Mittagessen',
+                prepTime: 30,
+                servings: 2,
+                calories: 0,
+                ingredients: [],
+                instructions: '',
+                mealPrep: false,
+                tags: []
+              });
+              setShowAddRecipe(false);
+            }
+          };
+
+          // Wochenplan-Funktionen
+          const daysOfWeek = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+          const mealTypes = ['Frühstück', 'Mittagessen', 'Abendessen'];
+
+          const addToWeekPlan = (day, mealType, recipe) => {
+            const key = `${currentWeek}-${day}-${mealType}`;
+            setWeekPlan({
+              ...weekPlan,
+              [key]: recipe
+            });
+          };
+
+          const removeFromWeekPlan = (day, mealType) => {
+            const key = `${currentWeek}-${day}-${mealType}`;
+            const newPlan = { ...weekPlan };
+            delete newPlan[key];
+            setWeekPlan(newPlan);
+          };
+
+          // Einkaufsliste generieren
+          const generateShoppingList = () => {
+            const shoppingList = {};
+            
+            Object.entries(weekPlan).forEach(([key, recipe]) => {
+              // Nur Rezepte der aktuellen Woche berücksichtigen
+              if (recipe && key.startsWith(`${currentWeek}-`)) {
+                recipe.ingredients.forEach(ing => {
+                  const itemKey = `${ing.item}-${ing.unit}`;
+                  if (shoppingList[itemKey]) {
+                    shoppingList[itemKey].amount += ing.amount;
+                  } else {
+                    shoppingList[itemKey] = { ...ing };
+                  }
+                });
+              }
+            });
+
+            return Object.values(shoppingList).sort((a, b) => a.item.localeCompare(b.item));
+          };
+
+          // Filter-Funktionen
+          const filteredRecipes = recipes.filter(recipe => {
+            const matchesSearch = recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                 recipe.ingredients.some(ing => ing.item.toLowerCase().includes(searchTerm.toLowerCase()));
+            const matchesCategory = selectedCategory === 'all' || recipe.category === selectedCategory;
+            return matchesSearch && matchesCategory;
+          });
+
+	 // Aktuelle Woche formatieren
+         const getWeekDateRange = () => {
+           const today = new Date();
+           const monday = new Date(today);
+           monday.setDate(today.getDate() - today.getDay() + 1 + (currentWeek * 7));
+           const sunday = new Date(monday);
+           sunday.setDate(monday.getDate() + 6);
+           
+           return `${monday.getDate()}.${monday.getMonth() + 1} - ${sunday.getDate()}.${sunday.getMonth() + 1}`;
+         };
+
+         return (
+           <div className="min-h-screen bg-gray-50">
+             {/* Mobile Bottom Navigation */}
+             <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+               <div className="grid grid-cols-3 h-16">
+                 <button
+                   onClick={() => setActiveView('recipes')}
+                   className={`flex flex-col items-center justify-center gap-1 ${
+                     activeView === 'recipes' ? 'text-blue-500' : 'text-gray-500'
+                   }`}
+                 >
+                   <Tag size={20} />
+                   <span className="text-xs">Rezepte</span>
+                 </button>
+                 <button
+                   onClick={() => setActiveView('weekplan')}
+                   className={`flex flex-col items-center justify-center gap-1 ${
+                     activeView === 'weekplan' ? 'text-blue-500' : 'text-gray-500'
+                   }`}
+                 >
+                   <Calendar size={20} />
+                   <span className="text-xs">Wochenplan</span>
+                 </button>
+                 <button
+                   onClick={() => setActiveView('shopping')}
+                   className={`flex flex-col items-center justify-center gap-1 ${
+                     activeView === 'shopping' ? 'text-blue-500' : 'text-gray-500'
+                   }`}
+                 >
+                   <ShoppingCart size={20} />
+                   <span className="text-xs">Einkaufsliste</span>
+                 </button>
+               </div>
+             </div>
+
+             <div className="max-w-7xl mx-auto pb-20 md:pb-4 md:p-4">
+               {/* Header - Mobile optimiert */}
+               <div className="bg-white shadow-sm p-4 md:rounded-lg md:p-6 mb-4 md:mb-6">
+                 <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                   <div>
+                     <h1 className="text-xl md:text-3xl font-bold text-gray-800 mb-2 md:mb-4">
+                       Rezept Dashboard
+                     </h1>
+                     {/* Desktop Navigation */}
+                     <div className="hidden md:flex gap-4">
+                       <button
+                         onClick={() => setActiveView('recipes')}
+                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                           activeView === 'recipes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                         }`}
+                       >
+                         <Tag size={20} />
+                         Rezepte
+                       </button>
+                       <button
+                         onClick={() => setActiveView('weekplan')}
+                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                           activeView === 'weekplan' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                         }`}
+                       >
+                         <Calendar size={20} />
+                         Wochenplan
+                       </button>
+                       <button
+                         onClick={() => setActiveView('shopping')}
+                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                           activeView === 'shopping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                         }`}
+                       >
+                         <ShoppingCart size={20} />
+                         Einkaufsliste
+                       </button>
+                     </div>
+                   </div>
+                   
+                   {/* Sync & Export Buttons - Mobile optimiert */}
+                   <div className="flex flex-wrap items-center justify-between md:flex-col md:items-end gap-2">
+                     <div className="flex gap-2">
+                       {SYNC_ENABLED && (
+                         <button
+                           onClick={() => syncFromCloud()}
+                           className={`flex items-center gap-1 px-2 py-1 text-sm rounded transition-colors ${
+                             syncStatus === 'syncing' ? 'bg-blue-500 text-white' :
+                             syncStatus === 'synced' ? 'bg-green-500 text-white' :
+                             syncStatus === 'error' ? 'bg-red-500 text-white' :
+                             'bg-gray-200 text-gray-700'
+                           }`}
+                         >
+                           {syncStatus === 'syncing' ? <RefreshCw size={14} className="animate-spin" /> :
+                            syncStatus === 'synced' ? <Cloud size={14} /> :
+                            syncStatus === 'error' ? <CloudOff size={14} /> :
+                            <Cloud size={14} />}
+                           <span className="hidden sm:inline">Sync</span>
+                         </button>
+                       )}
+                       <button
+                         onClick={exportData}
+                         className="p-1 text-gray-600 hover:text-gray-800"
+                         title="Exportieren"
+                       >
+                         <Download size={18} />
+                       </button>
+                       <label className="p-1 text-gray-600 hover:text-gray-800 cursor-pointer">
+                         <Upload size={18} />
+                         <input
+                           type="file"
+                           accept=".json"
+                           onChange={importData}
+                           className="hidden"
+                         />
+                       </label>
+                     </div>
+                     
+                     {SYNC_ENABLED && (
+                       <button
+                         onClick={generateSyncCode}
+                         className="text-xs text-blue-600"
+                       >
+                         Gerät verbinden
+                       </button>
+                     )}
+                   </div>
+                 </div>
+               </div>
+
+               {/* Sync Code Modal */}
+               {showSyncCode && (
+                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                   <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                     <h2 className="text-xl font-semibold mb-4">Gerät verbinden</h2>
+                     <div className="space-y-4">
+                       <div>
+                         <p className="text-sm text-gray-600 mb-2">
+                           Gib diesen Code auf deinem anderen Gerät ein:
+                         </p>
+                         <div className="text-3xl font-mono text-center bg-gray-100 p-4 rounded">
+                           {syncCode}
+                         </div>
+                       </div>
+                       <div className="border-t pt-4">
+                         <p className="text-sm text-gray-600 mb-2">
+                           Oder gib einen Code von einem anderen Gerät ein:
+                         </p>
+                         <input
+                           type="text"
+                           placeholder="Code eingeben"
+                           className="w-full p-2 border rounded uppercase"
+                           onKeyPress={(e) => {
+                             if (e.key === 'Enter') {
+                               connectWithSyncCode(e.target.value);
+                             }
+                           }}
+                         />
+                       </div>
+                       <button
+                         onClick={() => setShowSyncCode(false)}
+                         className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                       >
+                         Schließen
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               )}
+
+               {/* Rezepte View */}
+               {activeView === 'recipes' && (
+                 <div className="px-4 md:px-0">
+                   {/* Such- und Filterleiste - Mobile optimiert */}
+                   <div className="bg-white rounded-lg shadow-sm p-3 md:p-4 mb-4 md:mb-6">
+                     <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+                       <div className="flex-1">
+                         <div className="relative">
+                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                           <input
+                             type="text"
+                             placeholder="Suchen..."
+                             value={searchTerm}
+                             onChange={(e) => setSearchTerm(e.target.value)}
+                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+                           />
+                         </div>
+                       </div>
+                       <div className="flex gap-2">
+                         <select
+                           value={selectedCategory}
+                           onChange={(e) => setSelectedCategory(e.target.value)}
+                           className="flex-1 md:flex-none px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+                         >
+                           <option value="all">Alle</option>
+                           <option value="Frühstück">Frühstück</option>
+                           <option value="Mittagessen">Mittag</option>
+                           <option value="Abendessen">Abend</option>
+                           <option value="Snack">Snack</option>
+                         </select>
+                         <button
+                           onClick={() => setShowAddRecipe(true)}
+                           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1 text-sm md:text-base"
+                         >
+                           <Plus size={18} />
+                           <span className="hidden sm:inline">Neu</span>
+                         </button>
+                       </div>
+                     </div>
+                   </div>
+
+                   {/* Rezeptliste - Mobile optimiert */}
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                     {filteredRecipes.map(recipe => (
+                       <div key={recipe.id} className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow relative">
+                         <button
+                           onClick={() => deleteRecipe(recipe.id)}
+                           className="absolute top-2 right-2 text-gray-400 hover:text-red-500 p-1"
+                           title="Rezept löschen"
+                         >
+                           <Trash2 size={16} />
+                         </button>
+                         <h3 className="text-base md:text-lg font-semibold mb-2 pr-8">{recipe.name}</h3>
+                         <div className="flex flex-wrap gap-2 mb-2 text-xs md:text-sm">
+                           <span className="flex items-center gap-1 text-gray-600">
+                             <Clock size={14} />
+                             {recipe.prepTime} Min
+                           </span>
+                           <span className="flex items-center gap-1 text-gray-600">
+                             <Users size={14} />
+                             {recipe.servings} Port.
+                           </span>
+                           <span className="text-gray-600">
+                             {recipe.calories} kcal
+                           </span>
+                         </div>
+                         <div className="flex flex-wrap gap-1 mb-2">
+                           {recipe.mealPrep && (
+                             <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                               Meal Prep
+                             </span>
+                           )}
+                           {recipe.tags.slice(0, 2).map(tag => (
+                             <span key={tag} className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                               {tag}
+                             </span>
+                           ))}
+                         </div>
+                         <p className="text-xs md:text-sm text-gray-600 mb-2 line-clamp-2">{recipe.instructions}</p>
+                         <div className="text-xs md:text-sm">
+                           <p className="font-semibold mb-1">Zutaten:</p>
+                           <ul className="text-gray-600 text-xs">
+                             {recipe.ingredients.slice(0, 2).map((ing, i) => (
+                               <li key={i}>• {ing.amount} {ing.unit} {ing.item}</li>
+                             ))}
+                             {recipe.ingredients.length > 2 && (
+                               <li>• ... +{recipe.ingredients.length - 2} weitere</li>
+                             )}
+                           </ul>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
+               {/* Wochenplan View */}
+               {activeView === 'weekplan' && (
+                 <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                   <div className="flex items-center justify-between mb-4 md:mb-6">
+                     <button
+                       onClick={() => setCurrentWeek(currentWeek - 1)}
+                       className="p-2 hover:bg-gray-100 rounded-lg"
+                     >
+                       <ChevronLeft size={20} md:size={24} />
+                     </button>
+                     <h2 className="text-base md:text-xl font-semibold text-center">
+                       Woche: {getWeekDateRange()}
+                       {currentWeek === 0 && <span className="text-xs md:text-sm text-gray-500 ml-2">(Diese Woche)</span>}
+                     </h2>
+                     <button
+                       onClick={() => setCurrentWeek(currentWeek + 1)}
+                       className="p-2 hover:bg-gray-100 rounded-lg"
+                     >
+                       <ChevronRight size={20} md:size={24} />
+                     </button>
+                   </div>
+
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-sm md:text-base">
+                       <thead>
+                         <tr>
+                           <th className="text-left p-1 md:p-2 font-semibold text-xs md:text-base">Mahlzeit</th>
+                           {daysOfWeek.map(day => (
+                             <th key={day} className="text-center p-1 md:p-2 font-semibold min-w-[80px] md:min-w-[120px] text-xs md:text-base">
+                               {day.slice(0, 2)}
+                               <span className="hidden md:inline">{day.slice(2)}</span>
+                             </th>
+                           ))}
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {mealTypes.map(mealType => (
+                           <tr key={mealType} className="border-t">
+                             <td className="p-1 md:p-2 font-medium text-xs md:text-base">{mealType}</td>
+                             {daysOfWeek.map(day => {
+                               const key = `${currentWeek}-${day}-${mealType}`;
+                               const recipe = weekPlan[key];
+                               return (
+                                 <td key={day} className="p-1 md:p-2 border-l">
+                                   {recipe ? (
+                                     <div className="bg-blue-50 p-1 md:p-2 rounded text-xs md:text-sm">
+                                       <p className="font-medium line-clamp-1">{recipe.name}</p>
+                                       <p className="text-xs text-gray-600">{recipe.calories} kcal</p>
+                                       <button
+                                         onClick={() => removeFromWeekPlan(day, mealType)}
+                                         className="mt-1 text-red-500 hover:text-red-700"
+                                       >
+                                         <Trash2 size={12} md:size={14} />
+                                       </button>
+                                     </div>
+                                   ) : (
+                                     <select
+                                       onChange={(e) => {
+                                         const selectedRecipe = recipes.find(r => r.id === parseInt(e.target.value));
+                                         if (selectedRecipe) {
+                                           addToWeekPlan(day, mealType, selectedRecipe);
+                                         }
+                                       }}
+                                       className="w-full p-1 md:p-2 border rounded text-xs md:text-sm"
+                                       defaultValue=""
+                                     >
+                                       <option value="">+</option>
+                                       {recipes
+                                         .filter(r => r.category === mealType || mealType === 'Mittagessen')
+                                         .map(recipe => (
+                                           <option key={recipe.id} value={recipe.id}>
+                                             {recipe.name}
+                                           </option>
+                                         ))}
+                                     </select>
+                                   )}
+                                 </td>
+                               );
+                             })}
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
+
+                   <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs md:text-sm text-blue-700">
+                     <strong>Tipp:</strong> Plane deine Meal Prep Sessions am Wochenende! Rezepte mit dem "Meal Prep" Tag eignen sich besonders gut zum Vorkochen.
+                   </div>
+                 </div>
+               )}
+
+               {/* Einkaufsliste View */}
+               {activeView === 'shopping' && (
+                 <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                   <h2 className="text-lg md:text-xl font-semibold mb-4">
+                     Einkaufsliste für Woche: {getWeekDateRange()}
+                   </h2>
+                   {generateShoppingList().length > 0 ? (
+                     <>
+                       <div className="space-y-2 mb-4">
+                         {generateShoppingList().map((item, index) => (
+                           <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg text-sm md:text-base">
+                             <input type="checkbox" className="mr-3" />
+                             <span className="flex-1">
+                               {item.amount} {item.unit} {item.item}
+                             </span>
+                           </div>
+                         ))}
+                       </div>
+                       <button
+                         onClick={() => {
+                           const list = generateShoppingList()
+                             .map(item => `- ${item.amount} ${item.unit} ${item.item}`)
+                             .join('\n');
+                           navigator.clipboard.writeText(list);
+                           alert('Einkaufsliste in die Zwischenablage kopiert!');
+                         }}
+                         className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm md:text-base"
+                       >
+                         Liste kopieren
+                       </button>
+                     </>
+                   ) : (
+                     <p className="text-gray-500 text-sm md:text-base">
+                       Füge Rezepte zum Wochenplan hinzu, um eine Einkaufsliste zu generieren.
+                     </p>
+                   )}
+                 </div>
+               )}
+
+               {/* Neues Rezept Modal */}
+               {showAddRecipe && (
+                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                   <div className="bg-white rounded-lg p-4 md:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                     <div className="flex items-center justify-between mb-4">
+                       <h2 className="text-lg md:text-xl font-semibold">Neues Rezept hinzufügen</h2>
+                       <button
+                         onClick={() => setShowAddRecipe(false)}
+                         className="text-gray-500 hover:text-gray-700"
+                       >
+                         <X size={20} md:size={24} />
+                       </button>
+                     </div>
+
+                     <div className="space-y-4">
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Name</label>
+                         <input
+                           type="text"
+                           value={newRecipe.name}
+                           onChange={(e) => setNewRecipe({ ...newRecipe, name: e.target.value })}
+                           className="w-full p-2 border rounded-lg text-sm md:text-base"
+                           placeholder="z.B. Gemüse-Quinoa-Bowl"
+                         />
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4">
+                         <div>
+                           <label className="block text-sm font-medium mb-1">Kategorie</label>
+                           <select
+                             value={newRecipe.category}
+                             onChange={(e) => setNewRecipe({ ...newRecipe, category: e.target.value })}
+                             className="w-full p-2 border rounded-lg text-sm md:text-base"
+                           >
+                             <option value="Frühstück">Frühstück</option>
+                             <option value="Mittagessen">Mittagessen</option>
+                             <option value="Abendessen">Abendessen</option>
+                             <option value="Snack">Snack</option>
+                           </select>
+                         </div>
+
+                         <div>
+                           <label className="block text-sm font-medium mb-1">Zubereitungszeit (Min)</label>
+                           <input
+                             type="number"
+                             value={newRecipe.prepTime}
+                             onChange={(e) => setNewRecipe({ ...newRecipe, prepTime: parseInt(e.target.value) })}
+                             className="w-full p-2 border rounded-lg text-sm md:text-base"
+                           />
+                         </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4">
+                         <div>
+                           <label className="block text-sm font-medium mb-1">Portionen</label>
+                           <input
+                             type="number"
+                             value={newRecipe.servings}
+                             onChange={(e) => setNewRecipe({ ...newRecipe, servings: parseInt(e.target.value) })}
+                             className="w-full p-2 border rounded-lg text-sm md:text-base"
+                           />
+                         </div>
+
+                         <div>
+                           <label className="block text-sm font-medium mb-1">Kalorien (pro Portion)</label>
+                           <input
+                             type="number"
+                             value={newRecipe.calories}
+                             onChange={(e) => setNewRecipe({ ...newRecipe, calories: e.target.value })}
+                             className="w-full p-2 border rounded-lg text-sm md:text-base"
+                           />
+                         </div>
+                       </div>
+
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Zutaten</label>
+                         <div className="flex gap-2 mb-2">
+                           <input
+                             type="text"
+                             value={newIngredient.item}
+                             onChange={(e) => setNewIngredient({ ...newIngredient, item: e.target.value })}
+                             placeholder="Zutat"
+                             className="flex-1 p-2 border rounded-lg text-sm md:text-base"
+                           />
+                           <input
+                             type="number"
+                             value={newIngredient.amount}
+                             onChange={(e) => setNewIngredient({ ...newIngredient, amount: e.target.value })}
+                             placeholder="Menge"
+                             className="w-20 md:w-24 p-2 border rounded-lg text-sm md:text-base"
+                           />
+                           <select
+                             value={newIngredient.unit}
+                             onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })}
+                             className="w-20 md:w-24 p-2 border rounded-lg text-sm md:text-base"
+                           >
+                             <option value="g">g</option>
+                             <option value="ml">ml</option>
+                             <option value="Stück">Stück</option>
+                             <option value="EL">EL</option>
+                             <option value="TL">TL</option>
+                             <option value="Tasse">Tasse</option>
+                           </select>
+                           <button
+                             onClick={addIngredient}
+                             className="px-3 md:px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                           >
+                             +
+                           </button>
+                         </div>
+                         <div className="space-y-1">
+                           {newRecipe.ingredients.map((ing, index) => (
+                             <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                               <span>{ing.amount} {ing.unit} {ing.item}</span>
+                               <button
+                                 onClick={() => removeIngredient(index)}
+                                 className="text-red-500 hover:text-red-700"
+                               >
+                                 <X size={16} />
+                               </button>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Zubereitung</label>
+                         <textarea
+                           value={newRecipe.instructions}
+                           onChange={(e) => setNewRecipe({ ...newRecipe, instructions: e.target.value })}
+                           className="w-full p-2 border rounded-lg text-sm md:text-base"
+                           rows="4"
+                           placeholder="Beschreibe die Zubereitung Schritt für Schritt..."
+                         />
+                       </div>
+
+                       <div>
+                         <label className="block text-sm font-medium mb-1">Tags</label>
+                         <div className="flex gap-2 mb-2">
+                           <input
+                             type="text"
+                             value={newTag}
+                             onChange={(e) => setNewTag(e.target.value)}
+                             placeholder="Tag hinzufügen (z.B. vegan, schnell)"
+                             className="flex-1 p-2 border rounded-lg text-sm md:text-base"
+                             onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                           />
+                           <button
+                             onClick={addTag}
+                             className="px-3 md:px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                           >
+                             +
+                           </button>
+                         </div>
+                         <div className="flex flex-wrap gap-1">
+                           {newRecipe.tags.map(tag => (
+                             <span key={tag} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs md:text-sm rounded-full flex items-center gap-1">
+                               {tag}
+                               <button
+                                 onClick={() => removeTag(tag)}
+                                 className="text-blue-700 hover:text-blue-900"
+                               >
+                                 <X size={14} />
+                               </button>
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+
+                       <div className="flex items-center gap-2">
+                         <input
+                           type="checkbox"
+                           id="mealPrep"
+                           checked={newRecipe.mealPrep}
+                           onChange={(e) => setNewRecipe({ ...newRecipe, mealPrep: e.target.checked })}
+                         />
+                         <label htmlFor="mealPrep" className="text-sm">
+                           Für Meal Prep geeignet (kann vorgekocht werden)
+                         </label>
+                       </div>
+
+                       <div className="flex gap-2">
+                         <button
+                           onClick={saveRecipe}
+                           className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm md:text-base"
+                         >
+                           Rezept speichern
+                         </button>
+                         <button
+                           onClick={() => setShowAddRecipe(false)}
+                           className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 text-sm md:text-base"
+                         >
+                           Abbrechen
+                         </button>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               )}
+             </div>
+           </div>
+         );
+       };
+
+       const root = ReactDOM.createRoot(document.getElementById('root'));
+       root.render(<RecipeDashboard />);
+   </script>
+   
+   <!-- Service Worker für Offline -->
+   <script>
+       if ('serviceWorker' in navigator) {
+           window.addEventListener('load', () => {
+               navigator.serviceWorker.register('sw.js');
+           });
+       }
+   </script>
+</body>
+</html>
